@@ -1,8 +1,7 @@
 use std::fs;
 use std::io::Write;
 use axum::{
-    routing::{get, post},
-    Json, Router,
+    body::Body, routing::{get, post}, Json, Router
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -10,8 +9,77 @@ use chrono::Utc;
 use std::path::Path;
 use std::fs::File;
 use serde_json;
+use axum::{
+    middleware,
+    http::Request,
+    response::Response,
+};
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use serde_json::json;
 
+async fn authenticate(
+    username: String,
+    password: String,
+    request: Request<Body>, 
+    next: middleware::Next
+) -> Response {
+    println!("Authenticating request...");
 
+    // Safely get the Authorization header
+    let auth_header = match request.headers().get("Authorization") {
+        Some(header) => header,
+        None => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({
+                    "message": "Missing Authorization header.",
+                    "success": false
+                }))
+            ).into_response();
+        }
+    };
+
+    // Safely convert the header to a string and split it
+    let authentication = match auth_header.to_str() {
+        Ok(auth_str) => auth_str.split(":").collect::<Vec<&str>>(),
+        Err(_) => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({
+                    "message": "Invalid Authorization header format.",
+                    "success": false
+                }))
+            ).into_response();
+        }
+    };
+
+    // Check if we have both username and password
+    if authentication.len() != 2 {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "message": "Invalid Authorization header format.",
+                "success": false
+            }))
+        ).into_response();
+    }
+
+    let (auth_username, auth_password) = (authentication[0], authentication[1]);
+
+    if (auth_username != username) || (auth_password != password) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "message": "Unauthorized.",
+                "success": false
+            }))
+        ).into_response();
+    }
+
+    // Authentication successful, proceed with the request
+    next.run(request).await
+}
 
 #[tokio::main]
 async fn main() {
@@ -27,7 +95,12 @@ async fn main() {
         // `GET /` goes to `root`
         .route("/", get(root))
         // `POST /create-file` goes to `create_file`
-        .route("/create-file", post(|json | create_file(json, config.store, config.log_file)));
+        .route("/create-file", post(|json | create_file(json, config.store, config.log_file)))
+        .layer(middleware::from_fn(move |req, next| {
+            let username = config.username.clone();
+            let password = config.password.clone();
+            authenticate(username, password, req, next)
+        }));
 
     // Run our app with hyper, listening globally on given port
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.server_port)).await.unwrap();
@@ -115,8 +188,6 @@ struct Config {
 
 #[derive(Deserialize)]
 struct StoreRequest {
-    username: String,
-    password: String,
     content: Vec<u8>,
     file_name: String,
     file_extension: String,
