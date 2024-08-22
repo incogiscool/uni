@@ -11,23 +11,27 @@ use std::path::Path;
 use std::fs::File;
 use serde_json;
 
+
+
 #[tokio::main]
 async fn main() {
-    let port = 7777;
+    let config_path = "/Users/incog/Desktop/uni/config.json";
 
-    // initialize tracing
+    let config = get_config(config_path);
+
+    // Initialize tracing
     tracing_subscriber::fmt::init();
 
-    // build our application with a route
+    // Build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
         .route("/", get(root))
         // `POST /create-file` goes to `create_file`
-        .route("/create-file", post(create_file));
+        .route("/create-file", post(|json | create_file(json, config.store, config.log_file)));
 
-    // run our app with hyper, listening globally on port 7777
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await.unwrap();
-    println!("Listening on port {}", port);
+    // Run our app with hyper, listening globally on given port
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.server_port)).await.unwrap();
+    println!("Listening on port {}", config.server_port);
     axum::serve(listener, app).await.unwrap();
 }
 
@@ -35,8 +39,7 @@ async fn root() -> &'static str {
     "Hello, World!"
 }
 
-async fn create_file(Json(request): Json<StoreRequest>) -> Json<StoreResponse> {
-    // Add authentication here
+async fn create_file(Json(request): Json<StoreRequest>, store_path: String, log_file_path: String) -> Json<StoreResponse> {
 
     println!("Creating file...");
 
@@ -51,9 +54,15 @@ async fn create_file(Json(request): Json<StoreRequest>) -> Json<StoreResponse> {
     };
 
     println!("{:?}", log);
-    
+
+    // Ensure the directory exists
+    let dir_path = Path::new(&store_path);
+    if !dir_path.exists() {
+        fs::create_dir_all(&store_path).unwrap();
+    }
+
     // Write the file to disk
-    let file_path = format!("store/{}.{}", id, request.file_extension);
+    let file_path = format!("{}/{}.{}", store_path, id, request.file_extension);
     let mut file = fs::OpenOptions::new()
         .create(true)
         .write(true)
@@ -62,8 +71,11 @@ async fn create_file(Json(request): Json<StoreRequest>) -> Json<StoreResponse> {
 
     file.write_all(&request.content).unwrap();
 
+    println!("File written to disk: {}", file_path);
+    println!("Logging file...");
+
     // Read the log file
-    let log_file_path = Path::new("store/log.json");
+    let log_file_path = Path::new(&log_file_path);
     let mut logs: Vec<Log> = if log_file_path.exists() {
         let file = File::open(log_file_path).unwrap();
         serde_json::from_reader(file).unwrap_or_else(|_| Vec::new())
@@ -84,6 +96,21 @@ async fn create_file(Json(request): Json<StoreRequest>) -> Json<StoreResponse> {
         message: format!("File created: {}", id),
         success: true,
     })
+}
+
+fn get_config(config_path: &str) -> Config {
+    let config_path = Path::new(config_path);
+    let config_file = File::open(config_path).unwrap();
+    serde_json::from_reader(config_file).unwrap()
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Config {
+    username: String,
+    password: String,
+    store: String,
+    log_file: String,
+    server_port: u16,
 }
 
 #[derive(Deserialize)]

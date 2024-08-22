@@ -1,0 +1,7 @@
+{
+  "username": "username",
+  "password": "password",
+  "store": "/Users/incog/Desktop/uni/store",
+  "log_file": "/Users/incog/Desktop/uni/store/log.json",
+  "server_port": 7777
+}
