@@ -229,6 +229,8 @@ async fn get_file(request: Request<Body>, store_path: String, log_file_path: Str
                 file_name: log.file_name.clone(),
                 file_extension: log.file_extension.clone(),
                 content: buffer,
+                id: log.id.clone(),
+                timestamp: log.timestamp,
             };
             
             Json(StoreResponse {
@@ -358,5 +360,7 @@ struct Log {
 struct FileWithContent {
     file_name: String,
     file_extension: String,
+    id: String,
+    timestamp: i64,
     content: Vec<u8>,
 }
