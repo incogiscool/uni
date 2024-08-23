@@ -145,8 +145,12 @@ async fn main() {
 }
 
 // use this for temp auth (middleware authenticates all requests) but replacw with session based auth
-async fn root() -> &'static str {
-    "Hello, World!"
+async fn root() -> Json<StoreResponse> {
+    Json(StoreResponse {
+        message: "Hello, World!".to_string(),
+        success: true,
+        data: None,
+    })  
 }
 
 fn read_log_file(log_file_path: String) -> Vec<Log> {

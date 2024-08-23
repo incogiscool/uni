@@ -13,6 +13,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useMutation } from "@tanstack/react-query";
+import { authenticate } from "@/lib/api/authenticate";
+import toast from "react-hot-toast";
+import { setAuth } from "@/lib/api/util/setAuth";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   username: z.string().min(1, "Please enter a username."),
@@ -20,6 +25,22 @@ const formSchema = z.object({
 });
 
 export const SigninForm = () => {
+  const router = useRouter();
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (data: { username: string; password: string }) =>
+      authenticate(data.username, data.password),
+    onError: (error) => {
+      console.log(error);
+      toast.error("Invalid username or password");
+    },
+    onSuccess: (_, args) => {
+      toast.success("Successfully logged in");
+      setAuth(args.username, args.password);
+      router.push("/app");
+    },
+  });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -28,13 +49,12 @@ export const SigninForm = () => {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-  }
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form
+        onSubmit={form.handleSubmit((values) => mutate(values))}
+        className="space-y-6"
+      >
         <FormField
           control={form.control}
           name="username"
@@ -63,7 +83,7 @@ export const SigninForm = () => {
             </FormItem>
           )}
         />
-        <Button className="w-full" type="submit">
+        <Button className="w-full" type="submit" disabled={isPending}>
           Submit
         </Button>
       </form>
