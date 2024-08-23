@@ -1,28 +1,28 @@
-use std::fs;
-use std::io::Write;
-use axum::{
-    body::Body, routing::{get, post}, Json, Router
-};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use chrono::Utc;
-use std::path::Path;
-use std::fs::File;
-use serde_json;
-use axum::{
-    middleware,
-    http::Request,
-    response::Response,
-};
+use axum::extract::Request;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use axum::routing::delete;
+use axum::{
+    body::Body,
+    routing::{get, post},
+    Json, Router,
+};
+use axum::{middleware, response::Response};
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use serde_json;
 use serde_json::json;
+use std::fs;
+use std::fs::File;
+use std::io::{BufReader, Read, Write};
+use std::path::Path;
+use uuid::Uuid;
 
 async fn authenticate(
     username: String,
     password: String,
-    request: Request<Body>, 
-    next: middleware::Next
+    request: Request<Body>,
+    next: middleware::Next,
 ) -> Response {
     println!("Authenticating request...");
 
@@ -35,8 +35,9 @@ async fn authenticate(
                 Json(json!({
                     "message": "Missing Authorization header.",
                     "success": false
-                }))
-            ).into_response();
+                })),
+            )
+                .into_response();
         }
     };
 
@@ -49,8 +50,9 @@ async fn authenticate(
                 Json(json!({
                     "message": "Invalid Authorization header format.",
                     "success": false
-                }))
-            ).into_response();
+                })),
+            )
+                .into_response();
         }
     };
 
@@ -61,8 +63,9 @@ async fn authenticate(
             Json(json!({
                 "message": "Invalid Authorization header format.",
                 "success": false
-            }))
-        ).into_response();
+            })),
+        )
+            .into_response();
     }
 
     let (auth_username, auth_password) = (authentication[0], authentication[1]);
@@ -73,8 +76,9 @@ async fn authenticate(
             Json(json!({
                 "message": "Unauthorized.",
                 "success": false
-            }))
-        ).into_response();
+            })),
+        )
+            .into_response();
     }
 
     // Authentication successful, proceed with the request
@@ -95,15 +99,37 @@ async fn main() {
         // `GET /` goes to `root`
         .route("/", get(root))
         // `POST /create-file` goes to `create_file`
-        .route("/create-file", post(|json | create_file(json, config.store, config.log_file)))
-        .layer(middleware::from_fn(move |req, next| {
+        .route("/upload", {
+            let store = config.store.clone();
+            let log_file = config.log_file.clone();
+            post(move |json| create_file(json, store.clone(), log_file.clone()))
+        })
+        .route("/logs", {
+            let log_file = config.log_file.clone();
+            get(move |_: Request<Body>| get_logs(log_file.clone()))
+        })
+        .route("/files/:id", {
+            let store = config.store.clone();
+            let log_file = config.log_file.clone();
+            get(move |request: Request<Body>| get_file(request, store.clone(), log_file.clone()))
+        })
+        .route("/files/:id", {
+            let store = config.store.clone();
+            let log_file = config.log_file.clone();
+            delete(move |request: Request<Body>| delete_file(request, store.clone(), log_file.clone()))
+        })
+        .layer({
             let username = config.username.clone();
             let password = config.password.clone();
-            authenticate(username, password, req, next)
-        }));
+            middleware::from_fn(move |req, next| {
+                authenticate(username.clone(), password.clone(), req, next)
+            })
+        });
 
     // Run our app with hyper, listening globally on given port
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.server_port)).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.server_port))
+        .await
+        .unwrap();
     println!("Listening on port {}", config.server_port);
     axum::serve(listener, app).await.unwrap();
 }
@@ -112,8 +138,119 @@ async fn root() -> &'static str {
     "Hello, World!"
 }
 
-async fn create_file(Json(request): Json<StoreRequest>, store_path: String, log_file_path: String) -> Json<StoreResponse> {
+fn read_log_file(log_file_path: String) -> Vec<Log> {
+    // Read the log file
+    let log_file_path = Path::new(&log_file_path);
+    let logs: Vec<Log> = if log_file_path.exists() {
+        let file = File::open(log_file_path).unwrap();
+        serde_json::from_reader(file).unwrap_or_else(|_| Vec::new())
+    } else {
+        Vec::new()
+    };
 
+    return logs
+}
+
+async fn delete_file(request: Request<Body>, store_path: String, log_file_path: String) -> Json<StoreResponse> {
+    println!("Deleting file...");
+
+    let id = request.uri().path().trim_start_matches("/files/");
+
+    let logs = read_log_file(log_file_path.clone());
+    let log = logs.iter().find(|log| log.id == id).unwrap();
+
+    let file_path = format!("{}/{}.{}", store_path, id, log.file_extension);
+    println!("File path: {}", &file_path);
+
+    let _ = fs::remove_file(&file_path);
+
+    println!("File deleted: {}", file_path);
+    println!("Logging file...");
+
+    // Read the log file
+    let log_file_path = Path::new(&log_file_path);
+    let mut logs: Vec<Log> = if log_file_path.exists() {
+        let file = File::open(log_file_path).unwrap();
+        serde_json::from_reader(file).unwrap_or_else(|_| Vec::new())
+    } else {
+        Vec::new()
+    };
+
+    // Remove the log entry from the existing logs
+    logs.retain(|log| log.id != id);
+
+    // Write the updated logs back to the log file
+    let log_file = File::create(log_file_path).unwrap();
+    serde_json::to_writer_pretty(log_file, &logs).unwrap();
+
+    println!("File deleted: {}", file_path);
+
+    Json(StoreResponse {
+        message: format!("File deleted: {}", id),
+        success: true,
+        data: None,
+    })
+}
+
+async fn get_logs(log_file_path: String) -> Json<StoreResponse> {
+    println!("Getting files...");
+
+    let logs = read_log_file(log_file_path);
+
+    Json(StoreResponse {
+        message: "Successfully retrieved logs.".to_string(),
+        success: true,
+        data: Some(ResponseData::MultipleLogs(logs)),
+    })
+}
+
+async fn get_file(request: Request<Body>, store_path: String, log_file_path: String) -> Json<StoreResponse> {
+    println!("Retrieving file...");
+
+    let id = request.uri().path().trim_start_matches("/files/");
+
+    let logs = read_log_file(log_file_path);
+    let log = logs.iter().find(|log| log.id == id).unwrap();
+
+    let file_path = format!("{}/{}.{}", store_path, id, log.file_extension);
+    println!("File path: {}", &file_path);
+
+    let file = File::open(file_path);
+    
+
+    match file {
+        Ok(file) => {
+            let mut file = BufReader::new(file);
+            let mut buffer = Vec::new();
+            file.read_to_end(&mut buffer).unwrap();
+
+            let file_with_content = FileWithContent {
+                file_name: log.file_name.clone(),
+                file_extension: log.file_extension.clone(),
+                content: buffer,
+            };
+            
+            Json(StoreResponse {
+                message: "Successfully retrieved file.".to_string(),
+                success: true,
+                data: Some(ResponseData::FileWithContent(file_with_content)),
+            })
+        }
+        Err(_) => {
+            Json(StoreResponse {
+                message: "Failed to retrieve file.".to_string(),
+                success: false,
+                data: None,
+            })
+        }
+    }
+}
+
+async fn create_file(
+    Json(request): Json<StoreRequest>,
+    store_path: String,
+    log_file_path: String,
+) -> Json<StoreResponse> {
     println!("Creating file...");
 
     let id = Uuid::new_v4();
@@ -157,7 +294,7 @@ async fn create_file(Json(request): Json<StoreRequest>, store_path: String, log_
     };
 
     // Append the new log entry to the existing logs
-    logs.push(log);
+    logs.push(log.clone());
 
     // Write the updated logs back to the log file
     let log_file = File::create(log_file_path).unwrap();
@@ -168,6 +305,7 @@ async fn create_file(Json(request): Json<StoreRequest>, store_path: String, log_
     Json(StoreResponse {
         message: format!("File created: {}", id),
         success: true,
+        data: Some(ResponseData::SingleLog(log)),
     })
 }
 
@@ -194,15 +332,30 @@ struct StoreRequest {
 }
 
 #[derive(Serialize)]
+enum ResponseData {
+    SingleLog(Log),
+    FileWithContent(FileWithContent),
+    MultipleLogs(Vec<Log>),
+}
+
+#[derive(Serialize)]
 struct StoreResponse {
     message: String,
     success: bool,
+    data: Option<ResponseData>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct Log {
     timestamp: i64,
     file_name: String,
     id: String,
     file_extension: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct FileWithContent {
+    file_name: String,
+    file_extension: String,
+    content: Vec<u8>,
 }
