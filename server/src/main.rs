@@ -17,6 +17,8 @@ use std::fs::File;
 use std::io::{BufReader, Read, Write};
 use std::path::Path;
 use uuid::Uuid;
+use axum::http::{HeaderValue, Method};
+use tower_http::cors::{Any, CorsLayer};
 
 async fn authenticate(
     username: String,
@@ -94,6 +96,13 @@ async fn main() {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
+        // Create a CORS layer
+        let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::DELETE])
+        .allow_headers(Any);
+
+
     // Build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
@@ -124,7 +133,8 @@ async fn main() {
             middleware::from_fn(move |req, next| {
                 authenticate(username.clone(), password.clone(), req, next)
             })
-        });
+        })
+        .layer(cors);
 
     // Run our app with hyper, listening globally on given port
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.server_port))
