@@ -1,3 +1,9 @@
+import { SigninCard } from "@/components/cards/SigninCard";
+
 export default function Home() {
-  return <div>hello world</div>;
+  return (
+    <div className="p-4 flex justify-center items-center h-screen">
+      <SigninCard />
+    </div>
+  );
 }
