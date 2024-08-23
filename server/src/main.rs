@@ -134,6 +134,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+// use this for temp auth (middleware authenticates all requests) but replacw with session based auth
 async fn root() -> &'static str {
     "Hello, World!"
 }
