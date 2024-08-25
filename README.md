@@ -6,7 +6,8 @@ Uni is a free and open source file storage platform that allows you to use your 
 
 ## Demo
 
-INSERT DEMO HERE
+[DEMO
+](https://www.loom.com/share/03afc884501745adacdacb8d8cbe7390?sid=702e0595-7241-437e-8a14-5593c5b16142)
 
 ## Running the project locally
 
