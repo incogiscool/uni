@@ -45,11 +45,7 @@ cargo run
 cd ..
 ```
 
-3. Open your browser and navigate to `http://localhost:3000`
-
-Server should be running on `http://localhost:7777` by default and can be changed through the `config.json` file.
-
-4. Configuring the server
+3. Configuring the server
 
 You can configure the server by editing the `config.json` file. The file contains the following fields:
 
@@ -58,6 +54,20 @@ You can configure the server by editing the `config.json` file. The file contain
 - `store`: The path to the store (storage) directory.
 - `log_file`: The path to the log file.
 - `server_port`: The port to use for the server.
+
+You can change where the config file is through the
+
+```
+let config_path = "/Users/incog/Desktop/uni/config.json";
+```
+
+variable in the `server/src/main.rs` file.
+
+**If you change the config file, you will need to restart the server for the changes to take effect.**
+
+4. Open your browser and navigate to `http://localhost:3000`
+
+Server should be running on `http://localhost:7777` by default and can be changed through the `config.json` file.
 
 ## Hosting the project on domain through Nginx
 
