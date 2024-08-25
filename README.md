@@ -4,7 +4,7 @@ Uni is a free and open source file storage platform that allows you to use your 
 
 **NOTE: This is a work in progress. I am not a rust server developer, so I'm sure there are many bugs and missing features. If you find any, please open an issue.**
 
-## Demo
+## Demo & Setup Tutorial
 
 
 https://github.com/user-attachments/assets/7037a408-7ee3-4911-bbf4-c4d85892ecdb
