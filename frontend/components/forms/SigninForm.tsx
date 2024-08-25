@@ -16,8 +16,9 @@ import { Input } from "@/components/ui/input";
 import { useMutation } from "@tanstack/react-query";
 import { authenticate } from "@/lib/api/authenticate";
 import toast from "react-hot-toast";
-import { setAuth } from "@/lib/api/util/setAuth";
 import { useRouter } from "next/navigation";
+import { appRoute } from "@/lib/const";
+import { setAuth } from "@/lib/auth/actions/set-auth";
 
 const formSchema = z.object({
   username: z.string().min(1, "Please enter a username."),
@@ -32,12 +33,12 @@ export const SigninForm = () => {
       authenticate(data.username, data.password),
     onError: (error) => {
       console.log(error);
-      toast.error("Invalid username or password");
+      toast.error(error.message);
     },
-    onSuccess: (_, args) => {
+    onSuccess: async (_, args) => {
       toast.success("Successfully logged in");
-      setAuth(args.username, args.password);
-      router.push("/app");
+      await setAuth(args.username, args.password);
+      router.push(appRoute);
     },
   });
 

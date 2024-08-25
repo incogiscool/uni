@@ -19,6 +19,7 @@ use std::path::Path;
 use uuid::Uuid;
 use axum::http::{HeaderValue, Method};
 use tower_http::cors::{Any, CorsLayer};
+use axum::extract::DefaultBodyLimit;
 
 async fn authenticate(
     username: String,
@@ -134,7 +135,10 @@ async fn main() {
                 authenticate(username.clone(), password.clone(), req, next)
             })
         })
-        .layer(cors);
+        .layer(cors)
+        .layer(DefaultBodyLimit::max(1 * 1024 * 1024 * 1024)); // Set limit to 1GB
+
+
 
     // Run our app with hyper, listening globally on given port
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.server_port))
@@ -245,6 +249,7 @@ async fn get_file(request: Request<Body>, store_path: String, log_file_path: Str
                 content: buffer,
                 id: log.id.clone(),
                 timestamp: log.timestamp,
+                size: log.size
             };
             
             Json(StoreResponse {
@@ -278,6 +283,7 @@ async fn create_file(
         file_name: request.file_name.clone(),
         id: id.to_string(),
         file_extension: request.file_extension.clone(),
+        size: request.content.len()
     };
 
     println!("{:?}", log);
@@ -368,6 +374,8 @@ struct Log {
     file_name: String,
     id: String,
     file_extension: String,
+    // File size in bytes
+    size: usize
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -377,4 +385,5 @@ struct FileWithContent {
     id: String,
     timestamp: i64,
     content: Vec<u8>,
+    size: usize
 }
