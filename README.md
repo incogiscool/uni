@@ -38,7 +38,6 @@ Dont forget to change the port to the one you are using (can be changed in the c
 
 ```
 cd backend
-cargo install
 cargo run
 cd ..
 ```
