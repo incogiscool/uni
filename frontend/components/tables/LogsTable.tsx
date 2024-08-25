@@ -193,5 +193,5 @@ export const LogsTable = ({ logs }: { logs: Log[] }) => {
   ];
 
   // Reverse the logs array to display the most recent logs first
-  return <DataTable className="mt-4" columns={columns} data={logs.reverse()} />;
+  return <DataTable className="mt-4" columns={columns} data={logs} />;
 };
