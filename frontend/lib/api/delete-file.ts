@@ -1,9 +1,9 @@
 import { getAuth } from "../auth/actions/get-auth";
 import { DeleteFileResponse } from "../types";
-import { useApiUrl } from "./util/api-url";
+import { getApiUrl } from "./util/api-url";
 
 export const deleteFile = async (fileId: string) => {
-  const api = useApiUrl("deleteFile", fileId);
+  const api = getApiUrl("deleteFile", fileId);
 
   const auth = await getAuth();
 

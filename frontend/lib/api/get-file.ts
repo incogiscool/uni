@@ -1,9 +1,9 @@
 import { getAuth } from "../auth/actions/get-auth";
 import { GetFileResponse } from "../types";
-import { useApiUrl } from "./util/api-url";
+import { getApiUrl } from "./util/api-url";
 
 export const getFile = async (fileId: string) => {
-  const api = useApiUrl("getFile", fileId);
+  const api = getApiUrl("getFile", fileId);
 
   const auth = await getAuth();
 

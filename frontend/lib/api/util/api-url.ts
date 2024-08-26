@@ -1,7 +1,7 @@
 import { API_URL } from "@/lib/const";
 import { ApiIntent } from "@/lib/types";
 
-export const useApiUrl = (intent: ApiIntent, extend?: string) => {
+export const getApiUrl = (intent: ApiIntent, extend?: string) => {
   let route = "";
   let method = "GET";
 

@@ -1,9 +1,9 @@
 import { getAuth } from "../auth/actions/get-auth";
 import { LogResponse } from "../types";
-import { useApiUrl } from "./util/api-url";
+import { getApiUrl } from "./util/api-url";
 
 export const getLogs = async () => {
-  const apiUrl = useApiUrl("getLogs");
+  const apiUrl = getApiUrl("getLogs");
 
   const auth = await getAuth();
 

@@ -1,9 +1,9 @@
 import { getAuth } from "../auth/actions/get-auth";
 import { UploadFileResponse } from "../types";
-import { useApiUrl } from "./util/api-url";
+import { getApiUrl } from "./util/api-url";
 
 export const uploadFile = async (file: File) => {
-  const api = useApiUrl("uploadFile");
+  const api = getApiUrl("uploadFile");
   const auth = await getAuth();
 
   var re = /(?:\.([^.]+))?$/;

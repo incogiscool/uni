@@ -1,11 +1,10 @@
-import { API_URL } from "../const";
 import { StoreResponse } from "../types";
-import { useApiUrl } from "./util/api-url";
+import { getApiUrl } from "./util/api-url";
 
 export const authenticate = async (username: string, password: string) => {
   const authString = `${username}:${password}`;
 
-  const api = useApiUrl("authenticate");
+  const api = getApiUrl("authenticate");
 
   const res = await fetch(api.url, {
     method: api.method,
