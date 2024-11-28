@@ -2,7 +2,7 @@
 
 Uni is a free and open source file storage platform that allows you to use your own infrastructure to store and share files.
 
-**NOTE: This is a work in progress. I am not a rust server developer, so I'm sure there are many bugs and missing features. If you find any, please open an issue.**
+**NOTE: This is a work in progress, and is not production ready.**
 
 ## Demo & Setup Tutorial
 
