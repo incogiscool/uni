@@ -69,10 +69,6 @@ variable in the `server/src/main.rs` file.
 
 Server should be running on `http://localhost:7777` by default and can be changed through the `config.json` file.
 
-## Hosting the project on domain through Nginx
-
-ADD NGINX CONFIG HERE
-
 ## Contributing
 
 Contributions are welcome! If you find any bugs or have suggestions for improvements, please open an issue or submit a pull request.
